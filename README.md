@@ -5,7 +5,7 @@ O arquivo `oficina.db` é criado automaticamente na primeira execução, a parti
 
 ## Como executar (Windows)
 
-1. Extraia o zip e abra um terminal **dentro da pasta onde estão `src` e `requirements.txt`**
+1. Baixe a pasta e abra um terminal **dentro da pasta onde estão `src` e `requirements.txt`**
    (no Explorador de Arquivos: botão direito em espaço vazio -> "Abrir no Terminal").
 2. Rode:
 
