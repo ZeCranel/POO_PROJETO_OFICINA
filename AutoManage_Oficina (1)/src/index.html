@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoManage - Oficina Mecânica</title>
+<style>
+  :root { --azul:#1e3a5f; --azul2:#2b5a94; --cinza:#f2f4f7; --borda:#d5dbe3; --texto:#1f2933;
+          --verde:#1f9d55; --vermelho:#c0392b; --laranja:#d97706; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Segoe UI",Roboto,Arial,sans-serif; color:var(--texto); background:var(--cinza); }
+  .oculto { display:none !important; }
+  button { font:inherit; cursor:pointer; border:0; border-radius:6px; padding:8px 14px; background:var(--azul2); color:#fff; }
+  button:hover { filter:brightness(1.1); }
+  button.sec { background:#e4e8ee; color:var(--texto); }
+  button.perigo { background:var(--vermelho); }
+  button.ok { background:var(--verde); }
+  button.peq { padding:4px 9px; font-size:13px; margin-right:4px; }
+  input, select { font:inherit; padding:8px; border:1px solid var(--borda); border-radius:6px; width:100%; background:#fff; }
+  label { display:block; font-size:13px; font-weight:600; margin-bottom:4px; }
+
+  /* Login */
+  #telaLogin { min-height:100vh; display:flex; align-items:center; justify-content:center;
+               background:linear-gradient(135deg,var(--azul),var(--azul2)); padding:16px; }
+  .cartao-login { background:#fff; padding:32px; border-radius:12px; width:100%; max-width:380px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+  .cartao-login h1 { margin:0 0 4px; color:var(--azul); font-size:26px; }
+  .cartao-login p { margin:0 0 20px; color:#52606d; }
+  .cartao-login .campo { margin-bottom:14px; }
+  .cartao-login button { width:100%; padding:11px; }
+  .erro-login { color:var(--vermelho); min-height:20px; margin-top:10px; font-size:14px; }
+  .dica { margin-top:14px; font-size:12px; color:#7b8794; text-align:center; }
+
+  /* App */
+  header { background:var(--azul); color:#fff; padding:12px 20px; display:flex; align-items:center; justify-content:space-between; }
+  header .logo { font-weight:700; font-size:18px; }
+  header .usuario { display:flex; gap:12px; align-items:center; font-size:14px; }
+  .layout { display:flex; min-height:calc(100vh - 52px); }
+  nav { width:210px; background:#fff; border-right:1px solid var(--borda); padding:12px 0; flex-shrink:0; }
+  nav button { display:block; width:100%; text-align:left; background:none; color:var(--texto); border-radius:0; padding:11px 20px; }
+  nav button:hover { background:var(--cinza); filter:none; }
+  nav button.ativo { background:#e3edf9; color:var(--azul); font-weight:700; border-left:4px solid var(--azul2); padding-left:16px; }
+  main { flex:1; padding:22px; min-width:0; }
+  h2 { margin:0 0 16px; color:var(--azul); }
+  h3 { margin:0 0 12px; color:var(--azul); font-size:16px; }
+  .painel { background:#fff; border:1px solid var(--borda); border-radius:10px; padding:18px; margin-bottom:18px; }
+  .grade { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; align-items:end; }
+  .acoes-form { margin-top:14px; }
+  .tabela-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--borda); white-space:nowrap; }
+  th { background:var(--cinza); font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:#52606d; }
+  .vazio { color:#7b8794; padding:14px 4px; }
+  .badge { display:inline-block; padding:2px 9px; border-radius:20px; font-size:12px; font-weight:700; color:#fff; background:#7b8794; }
+  .b-ABERTA,.b-PENDENTE { background:#7b8794; } .b-EM_ANALISE { background:#2b5a94; }
+  .b-AGUARDANDO_PECAS { background:var(--laranja); } .b-EM_EXECUCAO { background:#8e44ad; }
+  .b-PRONTO,.b-APROVADO { background:var(--verde); } .b-FINALIZADA { background:#1f2933; } .b-REJEITADO { background:var(--vermelho); }
+  .linha-info { display:flex; flex-wrap:wrap; gap:24px; margin-bottom:6px; }
+  .linha-info div span { display:block; font-size:12px; color:#7b8794; }
+  .total { font-size:20px; font-weight:700; color:var(--azul); }
+  .passos li { margin-bottom:8px; }
+  .link { background:none; color:var(--azul2); padding:0; text-decoration:underline; }
+  #toast { position:fixed; right:20px; bottom:20px; padding:12px 18px; border-radius:8px; color:#fff; background:var(--verde);
+           box-shadow:0 4px 14px rgba(0,0,0,.25); max-width:420px; z-index:50; }
+  #toast.erro { background:var(--vermelho); }
+  @media (max-width:760px) { .layout { flex-direction:column; } nav { width:100%; display:flex; overflow-x:auto; padding:0; }
+    nav button { white-space:nowrap; } nav button.ativo { border-left:0; border-bottom:4px solid var(--azul2); padding-left:20px; } }
+</style>
+</head>
+<body>
+
+<div id="telaLogin">
+  <form class="cartao-login" id="formLogin">
+    <h1>🔧 AutoManage</h1>
+    <p>Sistema de gestão para oficina mecânica</p>
+    <div class="campo"><label for="loginUser">Usuário</label><input id="loginUser" autocomplete="username" required autofocus></div>
+    <div class="campo"><label for="loginPass">Senha</label><input id="loginPass" type="password" autocomplete="current-password" required></div>
+    <button type="submit">Entrar</button>
+    <div class="erro-login" id="loginErro"></div>
+    <div class="dica">Acesso de demonstração: <b>admin</b> / <b>admin123</b></div>
+  </form>
+</div>
+
+<div id="app" class="oculto">
+  <header>
+    <div class="logo">🔧 AutoManage - Oficina Mecânica</div>
+    <div class="usuario"><span id="usuarioNome"></span><button class="sec peq" id="btnSair">Sair</button></div>
+  </header>
+  <div class="layout">
+    <nav id="menu"></nav>
+    <main id="conteudo"></main>
+  </div>
+</div>
+<div id="toast" class="oculto"></div>
+
+<script>
+
+let token = sessionStorage.getItem('token');
+let nomeUsuario = sessionStorage.getItem('nome');
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+const NOME_STATUS = { ABERTA:'Aberta', EM_ANALISE:'Em análise', AGUARDANDO_PECAS:'Aguardando peças',
+                      EM_EXECUCAO:'Em execução', PRONTO:'Pronto', FINALIZADA:'Finalizada',
+                      PENDENTE:'Pendente', APROVADO:'Aprovado', REJEITADO:'Rejeitado' };
+const TRANSICOES = { ABERTA:['EM_ANALISE'], EM_ANALISE:['AGUARDANDO_PECAS','EM_EXECUCAO'],
+                     AGUARDANDO_PECAS:['EM_EXECUCAO'], EM_EXECUCAO:['AGUARDANDO_PECAS','PRONTO'],
+                     PRONTO:['FINALIZADA'], FINALIZADA:[] };
+
+function badge(st) { return `<span class="badge b-${esc(st)}">${esc(NOME_STATUS[st] || st)}</span>`; }
+function fdata(s) {
+  if (!s) return '-';
+  if (String(s).length === 10) { const [a,m,d] = s.split('-'); return `${d}/${m}/${a}`; }
+  const dt = new Date(s); return isNaN(dt) ? s : dt.toLocaleString('pt-BR');
+}
+function toast(msg, erro = false) {
+  const t = $('#toast'); t.textContent = msg; t.className = erro ? 'erro' : '';
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('oculto'), erro ? 6000 : 3000);
+}
+function formatarErro(d) {
+  if (!d) return 'Erro inesperado.';
+  if (typeof d.detail === 'string') return d.detail;
+  if (Array.isArray(d.detail)) return d.detail.map(e => {
+    const campo = (e.loc || []).slice(1).join('.');
+    return (campo ? campo + ': ' : '') + String(e.msg || 'valor inválido').replace('Value error, ', '');
+  }).join(' | ');
+  return 'Erro inesperado.';
+}
+async function api(metodo, rota, corpo) {
+  const r = await fetch(rota, {
+    method: metodo,
+    headers: { 'Content-Type':'application/json', ...(token ? { Authorization:'Bearer ' + token } : {}) },
+    body: corpo !== undefined ? JSON.stringify(corpo) : undefined
+  });
+  let dados = null; try { dados = await r.json(); } catch (e) {}
+  if (r.status === 401) { sair(false); throw new Error('Sessão expirada. Faça login novamente.'); }
+  if (!r.ok) throw new Error(formatarErro(dados));
+  return dados;
+}
+
+
+$('#formLogin').addEventListener('submit', async (e) => {
+  e.preventDefault(); $('#loginErro').textContent = '';
+  try {
+    const r = await fetch('/login', { method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ login: $('#loginUser').value.trim(), senha: $('#loginPass').value }) });
+    const d = await r.json().catch(() => null);
+    if (!r.ok) throw new Error(formatarErro(d));
+    token = d.token; nomeUsuario = d.nome;
+    sessionStorage.setItem('token', token); sessionStorage.setItem('nome', nomeUsuario);
+    $('#loginPass').value = '';
+    entrar();
+  } catch (err) { $('#loginErro').textContent = err.message; }
+});
+$('#btnSair').addEventListener('click', () => sair(true));
+
+async function sair(avisarServidor) {
+  if (avisarServidor && token) { try { await api('POST', '/logout'); } catch (e) {} }
+  token = null; nomeUsuario = null; sessionStorage.clear();
+  $('#app').classList.add('oculto'); $('#telaLogin').classList.remove('oculto');
+}
+function entrar() {
+  $('#telaLogin').classList.add('oculto'); $('#app').classList.remove('oculto');
+  $('#usuarioNome').textContent = '👤 ' + (nomeUsuario || '');
+  montarMenu(); navegar('inicio');
+}
+
+
+const MENU = [['inicio','🏠 Início'],['clientes','👥 Clientes'],['veiculos','🚗 Veículos'],['mecanicos','🧑‍🔧 Mecânicos'],
+              ['pecas','⚙️ Peças'],['servicos','🛠️ Serviços'],['orcamentos','📝 Orçamentos'],['os','📋 Ordens de Serviço']];
+function montarMenu() {
+  $('#menu').innerHTML = MENU.map(([k, l]) => `<button data-k="${k}">${l}</button>`).join('');
+  $('#menu').querySelectorAll('button').forEach(b => b.addEventListener('click', () => navegar(b.dataset.k)));
+}
+async function navegar(chave) {
+  $('#menu').querySelectorAll('button').forEach(b => b.classList.toggle('ativo', b.dataset.k === chave));
+  try {
+    if (chave === 'inicio') paginaInicio();
+    else if (chave === 'os') await paginaOS();
+    else await paginaEntidade(chave);
+  } catch (e) { toast(e.message, true); }
+}
+
+function paginaInicio() {
+  $('#conteudo').innerHTML = `
+    <h2>Bem-vindo, ${esc(nomeUsuario)}!</h2>
+    <div class="painel">
+      <h3>Passo a passo do atendimento</h3>
+      <ol class="passos">
+        <li>Cadastre o <button class="link" data-ir="clientes">cliente</button> e o <button class="link" data-ir="veiculos">veículo</button> dele.</li>
+        <li>Cadastre os <button class="link" data-ir="mecanicos">mecânicos</button>, as <button class="link" data-ir="pecas">peças</button> e os <button class="link" data-ir="servicos">serviços</button> da oficina.</li>
+        <li>Crie um <button class="link" data-ir="orcamentos">orçamento</button> para o veículo e <b>aprove</b> quando o cliente aceitar.</li>
+        <li>Em <button class="link" data-ir="os">Ordens de Serviço</button>, abra a OS a partir do orçamento aprovado.</li>
+        <li>Dentro da OS: atribua o mecânico, adicione peças/serviços e avance o status até <b>Finalizada</b>.</li>
+      </ol>
+    </div>
+    <div class="painel">
+      <h3>Fluxo de status da OS</h3>
+      ${badge('ABERTA')} → ${badge('EM_ANALISE')} → ${badge('EM_EXECUCAO')} ⇄ ${badge('AGUARDANDO_PECAS')} → ${badge('PRONTO')} → ${badge('FINALIZADA')}
+    </div>`;
+  $('#conteudo').querySelectorAll('[data-ir]').forEach(b => b.addEventListener('click', () => navegar(b.dataset.ir)));
+}
+
+
+const ENT = {
+  clientes: { titulo:'Clientes', rota:'/clientes', msg:'Cliente cadastrado!',
+    campos:[{n:'nome',l:'Nome completo'},{n:'cpf',l:'CPF',ph:'000.000.000-00'},{n:'telefone',l:'Telefone',ph:'(67) 99999-9999'},{n:'endereco',l:'Endereço',opc:true}],
+    colunas:[{n:'idCliente',l:'ID'},{n:'nome',l:'Nome'},{n:'cpf',l:'CPF'},{n:'telefone',l:'Telefone'},{n:'endereco',l:'Endereço'}],
+    acoes:[{l:'Excluir',cls:'perigo',fn: async r => { if (!confirm('Excluir este cliente?')) return false;
+             await api('DELETE','/clientes/'+r.idCliente); toast('Cliente excluído.'); }}] },
+  veiculos: { titulo:'Veículos', rota:'/veiculos', msg:'Veículo cadastrado!',
+    campos:[{n:'placa',l:'Placa',ph:'ABC1D23'},{n:'modelo',l:'Modelo'},{n:'marca',l:'Marca'},{n:'ano',l:'Ano',tipo:'number'},
+            {n:'id_cliente',l:'Cliente (dono)',tipo:'select',fonte:'/clientes',val:r=>r.idCliente,rot:r=>`${r.nome} (${r.cpf})`,num:true,vazio:'Cadastre um cliente primeiro'}],
+    colunas:[{n:'placa',l:'Placa'},{n:'marca',l:'Marca'},{n:'modelo',l:'Modelo'},{n:'ano',l:'Ano'},{n:'idCliente',l:'ID Cliente'}],
+    acoes:[{l:'Histórico',cls:'sec',fn: async r => { const h = await api('GET','/veiculos/'+r.placa+'/historico');
+             $('#extra').innerHTML = `<div class="painel"><h3>Histórico de manutenção - ${esc(h.placa)}</h3>` +
+               (h.ordens_servico.length ? `<div class="tabela-wrap"><table><thead><tr><th>OS</th><th>Abertura</th><th>Conclusão</th><th>Status</th><th>Total</th></tr></thead><tbody>` +
+               h.ordens_servico.map(o => `<tr><td>#${o.numeroOS}</td><td>${fdata(o.dataAbertura)}</td><td>${fdata(o.dataConclusao)}</td><td>${badge(o.status)}</td><td>${brl(o.valorTotal)}</td></tr>`).join('') +
+               `</tbody></table></div>` : `<div class="vazio">Este veículo ainda não tem ordens de serviço.</div>`) + `</div>`;
+             return false; }},
+           {l:'Excluir',cls:'perigo',fn: async r => { if (!confirm('Excluir este veículo?')) return false;
+             await api('DELETE','/veiculos/'+r.placa); toast('Veículo excluído.'); }}] },
+  mecanicos: { titulo:'Mecânicos', rota:'/mecanicos', msg:'Mecânico cadastrado!',
+    campos:[{n:'nome',l:'Nome completo'},{n:'cpf',l:'CPF'},{n:'telefone',l:'Telefone'},{n:'especialidade',l:'Especialidade',ph:'Ex.: Motor, Freios'}],
+    colunas:[{n:'idMecanico',l:'ID'},{n:'nome',l:'Nome'},{n:'cpf',l:'CPF'},{n:'telefone',l:'Telefone'},{n:'especialidade',l:'Especialidade'}],
+    acoes:[{l:'Excluir',cls:'perigo',fn: async r => { if (!confirm('Excluir este mecânico?')) return false;
+             await api('DELETE','/mecanicos/'+r.idMecanico); toast('Mecânico excluído.'); }}] },
+  pecas: { titulo:'Peças', rota:'/pecas', msg:'Peça cadastrada!',
+    campos:[{n:'descricao',l:'Descrição'},{n:'quantidade_estoque',l:'Estoque inicial',tipo:'number'},{n:'preco_unitario',l:'Preço unitário (R$)',tipo:'number',step:'0.01'}],
+    colunas:[{n:'idPeca',l:'ID'},{n:'descricao',l:'Descrição'},{n:'quantidadeEstoque',l:'Estoque'},{n:'precoUnitario',l:'Preço',fmt:brl}],
+    acoes:[{l:'Repor estoque',cls:'ok',fn: async r => { const q = prompt('Quantas unidades entraram no estoque?'); if (q === null) return false;
+             const n = parseInt(q, 10); if (!(n > 0)) { toast('Informe um número maior que zero.', true); return false; }
+             await api('PATCH','/pecas/'+r.idPeca+'/estoque',{quantidade:n}); toast('Estoque atualizado.'); }}] },
+  servicos: { titulo:'Serviços', rota:'/servicos', msg:'Serviço cadastrado!',
+    campos:[{n:'descricao',l:'Descrição'},{n:'valor_padrao',l:'Valor padrão (R$)',tipo:'number',step:'0.01'}],
+    colunas:[{n:'idServico',l:'ID'},{n:'descricao',l:'Descrição'},{n:'valorPadrao',l:'Valor padrão',fmt:brl}], acoes:[] },
+  orcamentos: { titulo:'Orçamentos', rota:'/orcamentos', msg:'Orçamento criado!',
+    campos:[{n:'placa_veiculo',l:'Veículo',tipo:'select',fonte:'/veiculos',val:r=>r.placa,rot:r=>`${r.placa} - ${r.marca} ${r.modelo}`,vazio:'Cadastre um veículo primeiro'},
+            {n:'descricao',l:'Descrição do serviço',opc:true},{n:'valor_total',l:'Valor total (R$)',tipo:'number',step:'0.01'},
+            {n:'data_validade',l:'Válido até',tipo:'date'}],
+    colunas:[{n:'numeroOrcamento',l:'Nº'},{n:'placaVeiculo',l:'Placa'},{n:'descricao',l:'Descrição'},{n:'valorTotal',l:'Valor',fmt:brl},
+             {n:'dataValidade',l:'Validade',fmt:fdata},{n:'status',l:'Status',fmt:badge,html:true}],
+    acoes:[{l:'Aprovar',cls:'ok',mostrar:r=>r.status==='PENDENTE',fn: async r => { await api('PUT','/orcamentos/'+r.numeroOrcamento+'/aprovar'); toast('Orçamento aprovado!'); }},
+           {l:'Rejeitar',cls:'perigo',mostrar:r=>r.status==='PENDENTE',fn: async r => { await api('PUT','/orcamentos/'+r.numeroOrcamento+'/rejeitar'); toast('Orçamento rejeitado.'); }}] }
+};
+
+async function paginaEntidade(chave) {
+  const cfg = ENT[chave];
+  const opcoes = {};
+  for (const c of cfg.campos) if (c.fonte) opcoes[c.n] = await api('GET', c.fonte);
+  const linhas = await api('GET', cfg.rota);
+
+  const campoHtml = (c) => {
+    if (c.tipo === 'select') {
+      const lista = opcoes[c.n] || [];
+      const ops = lista.length ? lista.map(o => `<option value="${esc(c.val(o))}">${esc(c.rot(o))}</option>`).join('')
+                               : `<option value="">${esc(c.vazio || 'Sem opções')}</option>`;
+      return `<div><label>${c.l}</label><select name="${c.n}" required>${ops}</select></div>`;
+    }
+    return `<div><label>${c.l}</label><input name="${c.n}" type="${c.tipo || 'text'}" ${c.step ? `step="${c.step}"` : (c.tipo === 'number' ? 'step="1"' : '')}
+            ${c.ph ? `placeholder="${esc(c.ph)}"` : ''} ${c.opc ? '' : 'required'}></div>`;
+  };
+  const celula = (c, r) => c.fmt ? (c.html ? c.fmt(r[c.n]) : esc(c.fmt(r[c.n]))) : esc(r[c.n] ?? '-');
+
+  $('#conteudo').innerHTML = `
+    <h2>${cfg.titulo}</h2>
+    <div class="painel"><h3>Novo cadastro</h3>
+      <form id="formEnt"><div class="grade">${cfg.campos.map(campoHtml).join('')}</div>
+        <div class="acoes-form"><button type="submit">Salvar</button></div></form></div>
+    <div class="painel"><h3>Cadastrados (${linhas.length})</h3>
+      ${linhas.length ? `<div class="tabela-wrap"><table><thead><tr>${cfg.colunas.map(c => `<th>${c.l}</th>`).join('')}${cfg.acoes.length ? '<th>Ações</th>' : ''}</tr></thead><tbody>
+        ${linhas.map((r, i) => `<tr>${cfg.colunas.map(c => `<td>${celula(c, r)}</td>`).join('')}${cfg.acoes.length ? `<td>${
+          cfg.acoes.map((a, j) => (!a.mostrar || a.mostrar(r)) ? `<button class="peq ${a.cls}" data-i="${i}" data-a="${j}">${a.l}</button>` : '').join('')}</td>` : ''}</tr>`).join('')}
+        </tbody></table></div>` : `<div class="vazio">Nada cadastrado ainda.</div>`}
+    </div>
+    <div id="extra"></div>`;
+
+  $('#formEnt').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const corpo = {};
+    for (const c of cfg.campos) {
+      const v = e.target.elements[c.n].value.trim();
+      if (v === '') corpo[c.n] = c.opc ? null : v;
+      else corpo[c.n] = (c.tipo === 'number' || c.num) ? Number(v) : v;
+    }
+    try { await api('POST', cfg.rota, corpo); toast(cfg.msg); navegar(chave); }
+    catch (err) { toast(err.message, true); }
+  });
+  $('#conteudo').querySelectorAll('button[data-a]').forEach(b => b.addEventListener('click', async () => {
+    try { const res = await cfg.acoes[+b.dataset.a].fn(linhas[+b.dataset.i]); if (res !== false) navegar(chave); }
+    catch (err) { toast(err.message, true); }
+  }));
+}
+
+
+async function paginaOS() {
+  const [lista, aprovados] = await Promise.all([api('GET', '/os'), api('GET', '/orcamentos?status=APROVADO')]);
+  const usados = new Set(lista.map(o => o.numeroOrcamento));
+  const livres = aprovados.filter(o => !usados.has(o.numeroOrcamento));
+  $('#conteudo').innerHTML = `
+    <h2>Ordens de Serviço</h2>
+    <div class="painel"><h3>Abrir nova OS (a partir de orçamento aprovado)</h3>
+      ${livres.length ? `<form id="formOS"><div class="grade">
+          <div><label>Orçamento aprovado</label><select name="orc" required>${livres.map(o =>
+            `<option value="${o.numeroOrcamento}">Orç. #${o.numeroOrcamento} - ${esc(o.placaVeiculo)} - ${esc(brl(o.valorTotal))}</option>`).join('')}</select></div>
+          <div><label>Observações</label><input name="obs" placeholder="Ex.: cliente relatou barulho no motor"></div></div>
+        <div class="acoes-form"><button type="submit">Abrir OS</button></div></form>`
+        : `<div class="vazio">Não há orçamentos aprovados sem OS. Crie e aprove um orçamento na aba <b>Orçamentos</b>.</div>`}
+    </div>
+    <div class="painel"><h3>Ordens de serviço (${lista.length})</h3>
+      ${lista.length ? `<div class="tabela-wrap"><table><thead><tr><th>Nº OS</th><th>Placa</th><th>Status</th><th>Total</th><th>Abertura</th><th></th></tr></thead><tbody>
+        ${lista.map(o => `<tr><td>#${o.numeroOS}</td><td>${esc(o.placaVeiculo)}</td><td>${badge(o.status)}</td><td>${brl(o.valorTotal)}</td><td>${fdata(o.dataAbertura)}</td>
+          <td><button class="peq" data-os="${o.numeroOS}">Gerenciar</button></td></tr>`).join('')}</tbody></table></div>`
+        : `<div class="vazio">Nenhuma OS aberta ainda.</div>`}
+    </div>`;
+  if (livres.length) $('#formOS').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const r = await api('POST', '/os', { numero_orcamento: Number(e.target.elements.orc.value),
+                                           observacoes: e.target.elements.obs.value.trim() || null });
+      toast('OS #' + r.os.numeroOS + ' aberta!'); detalheOS(r.os.numeroOS);
+    } catch (err) { toast(err.message, true); }
+  });
+  $('#conteudo').querySelectorAll('button[data-os]').forEach(b => b.addEventListener('click', () => detalheOS(+b.dataset.os).catch(e => toast(e.message, true))));
+}
+
+async function detalheOS(n) {
+  const [os, mecs, pecas, servs] = await Promise.all([api('GET','/os/'+n), api('GET','/mecanicos'), api('GET','/pecas'), api('GET','/servicos')]);
+  const editavel = !['PRONTO','FINALIZADA'].includes(os.status);
+  const jaNaOS = new Set(os.mecanicos.map(m => m.idMecanico));
+  const mecsLivres = mecs.filter(m => !jaNaOS.has(m.idMecanico));
+  const proximos = TRANSICOES[os.status] || [];
+
+  $('#conteudo').innerHTML = `
+    <button class="sec peq" id="voltar">← Voltar para a lista</button>
+    <h2 style="margin-top:12px">Ordem de Serviço #${os.numeroOS} ${badge(os.status)}</h2>
+    <div class="painel">
+      <div class="linha-info">
+        <div><span>Veículo (placa)</span>${esc(os.placaVeiculo)}</div>
+        <div><span>Orçamento</span>#${os.numeroOrcamento}</div>
+        <div><span>Abertura</span>${fdata(os.dataAbertura)}</div>
+        <div><span>Conclusão</span>${fdata(os.dataConclusao)}</div>
+        <div><span>Valor total</span><b class="total">${brl(os.valorTotal)}</b></div>
+      </div>
+      ${os.observacoes ? `<div style="margin-top:8px"><span style="font-size:12px;color:#7b8794">Observações:</span> ${esc(os.observacoes)}</div>` : ''}
+    </div>
+
+    <div class="painel"><h3>Andamento da OS</h3>
+      ${proximos.length ? proximos.map(s => `<button class="ok" data-st="${s}">Mover para: ${esc(NOME_STATUS[s])}</button>`).join(' ')
+                        : '<div class="vazio">OS encerrada. Nenhuma mudança de status é possível.</div>'}
+    </div>
+
+    <div class="painel"><h3>Mecânicos responsáveis</h3>
+      ${os.mecanicos.length ? os.mecanicos.map(m => `<span class="badge" style="background:#2b5a94;margin-right:6px">${esc(m.nome)} (${esc(m.especialidade)})</span>`).join('')
+                            : '<div class="vazio">Nenhum mecânico atribuído ainda.</div>'}
+      ${os.status !== 'FINALIZADA' ? (mecsLivres.length ? `<form id="formMec" style="margin-top:14px"><div class="grade">
+          <div><label>Atribuir mecânico</label><select name="m" required>${mecsLivres.map(m => `<option value="${m.idMecanico}">${esc(m.nome)} - ${esc(m.especialidade)}</option>`).join('')}</select></div>
+          <div><button type="submit">Atribuir</button></div></div></form>`
+        : `<div class="vazio">${mecs.length ? 'Todos os mecânicos já estão nesta OS.' : 'Cadastre mecânicos na aba Mecânicos.'}</div>`) : ''}
+    </div>
+
+    <div class="painel"><h3>Peças e serviços da OS</h3>
+      ${os.itens.length ? `<div class="tabela-wrap"><table><thead><tr><th>Tipo</th><th>Descrição</th><th>Qtd</th><th>Valor unit.</th><th>Subtotal</th></tr></thead><tbody>
+        ${os.itens.map(i => `<tr><td>${i.tipo === 'PECA' ? 'Peça' : 'Serviço'}</td><td>${esc(i.descricao)}</td><td>${i.quantidade}</td><td>${brl(i.valorUnitario)}</td><td>${brl(i.subtotal)}</td></tr>`).join('')}
+        <tr><td colspan="4" style="text-align:right"><b>Total</b></td><td><b>${brl(os.valorTotal)}</b></td></tr></tbody></table></div>`
+        : '<div class="vazio">Nenhum item adicionado.</div>'}
+      ${editavel ? `<form id="formItem" style="margin-top:14px"><div class="grade">
+          <div><label>Tipo</label><select name="tipo"><option value="PECA">Peça</option><option value="SERVICO">Serviço</option></select></div>
+          <div><label>Item</label><select name="item" required></select></div>
+          <div><label>Quantidade</label><input name="qtd" type="number" min="1" step="1" value="1" required></div>
+          <div><label>Valor unit. (opcional)</label><input name="valor" type="number" min="0" step="0.01" placeholder="usa o do catálogo"></div></div>
+        <div class="acoes-form"><button type="submit">Adicionar item</button></div></form>` : ''}
+    </div>`;
+
+  $('#voltar').addEventListener('click', () => navegar('os'));
+  $('#conteudo').querySelectorAll('button[data-st]').forEach(b => b.addEventListener('click', async () => {
+    try { await api('PUT', `/os/${n}/status`, { novo_status: b.dataset.st }); toast('Status atualizado!'); detalheOS(n); }
+    catch (err) { toast(err.message, true); }
+  }));
+  if ($('#formMec')) $('#formMec').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await api('POST', `/os/${n}/mecanicos`, { id_mecanico: Number(e.target.elements.m.value) }); toast('Mecânico atribuído!'); detalheOS(n); }
+    catch (err) { toast(err.message, true); }
+  });
+  if ($('#formItem')) {
+    const f = $('#formItem');
+    const preencher = () => {
+      const lista = f.elements.tipo.value === 'PECA' ? pecas : servs;
+      f.elements.item.innerHTML = lista.length ? lista.map(x => f.elements.tipo.value === 'PECA'
+        ? `<option value="${x.idPeca}">${esc(x.descricao)} - ${esc(brl(x.precoUnitario))} (estoque: ${x.quantidadeEstoque})</option>`
+        : `<option value="${x.idServico}">${esc(x.descricao)} - ${esc(brl(x.valorPadrao))}</option>`).join('')
+        : '<option value="">Nenhum cadastrado</option>';
+    };
+    f.elements.tipo.addEventListener('change', preencher); preencher();
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const corpo = { tipo: f.elements.tipo.value, id_item: Number(f.elements.item.value), quantidade: Number(f.elements.qtd.value) };
+      if (f.elements.valor.value !== '') corpo.valor_unitario = Number(f.elements.valor.value);
+      try { await api('POST', `/os/${n}/itens`, corpo); toast('Item adicionado!'); detalheOS(n); }
+      catch (err) { toast(err.message, true); }
+    });
+  }
+}
+
+
+if (token) entrar();
+</script>
+</body>
+</html>
